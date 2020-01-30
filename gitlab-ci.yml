@@ -1,0 +1,75 @@
+image: node:6.11.0
+
+# Build - Build necessary JS files
+# Test - Run tests
+# Deploy - Deploy application to static web/docker images/npm registry
+stages:
+  - build
+  - test
+  - deploy
+
+# Configuration
+variables:
+  CONTAINER_IMAGE: 36node/react-app-sketch:$CI_BUILD_TAG
+  CONTAINER_RELEASE_IMAGE: 36node/react-app-sketch:latest
+
+cache:
+  paths:
+    - node_modules/
+    - dist/
+  key: ${CI_BUILD_REF_NAME}
+  untracked: true
+
+# Job: Build
+# Build dist
+build:
+  stage: build
+  before_script:
+    - echo "building branch:$CI_BUILD_REF_NAME tag:$CI_BUILD_TAG"
+  script:
+    - npm install
+    - NODE_ENV=production npm run build
+  artifacts:
+    paths:
+      - dist/
+
+
+# Job: Test
+# Run tests against our application
+# If this fails, we do not deploy
+test:
+  stage: test
+  script:
+    - npm run lint
+    - npm run test
+  only:
+    - branches
+    - tags
+
+# Job: release docker-image
+docker-image:
+  stage: deploy
+  script:
+    - docker build -t $CONTAINER_IMAGE .
+    - docker tag $CONTAINER_IMAGE $CONTAINER_RELEASE_IMAGE
+  only:
+    - tags
+
+
+# Job: Deploy web --Commented for now, need to configure for deploy on server
+# web:
+#   stage: deploy
+#   script:
+#     - npm run deploy -- ${DEPLOY_PATH}
+#   only:
+#     - master
+#     - tags
+
+# Job: npm bpulish
+# publish:
+#   stage: deploy
+#   script:
+#     - npm publish
+#   only:
+#     - tags
+#     - master
